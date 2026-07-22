@@ -1,31 +1,31 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import dynamic from "next/dynamic";
-import { 
-  Truck, 
-  AlertTriangle, 
-  Activity, 
-  MapPin, 
-  Layers, 
-  Search, 
-  Filter, 
-  Sliders, 
-  CheckCircle2, 
-  Clock, 
-  Radio, 
-  RefreshCw,
-  Info
+import {
+  Truck,
+  AlertTriangle,
+  Activity,
+  MapPin,
+  Search,
+  CheckCircle2,
+  Clock,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown
 } from "lucide-react";
 
-// Dynamically import Leaflet components to ensure client-side rendering only (preventing SSR window errors)
-const MapContainer = dynamic(() => import("react-leaflet").then((mod) => mod.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import("react-leaflet").then((mod) => mod.TileLayer), { ssr: false });
-const Marker = dynamic(() => import("react-leaflet").then((mod) => mod.Marker), { ssr: false });
-const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), { ssr: false });
+// Leaflet touches `window` at import time and relies on React context shared
+// across its components, so load the whole map as one client-only chunk
+// (ssr: false). Splitting the individual react-leaflet components into separate
+// dynamic imports breaks that shared context (obj[eventsKey] runtime errors).
+const FleetMap = dynamic(() => import("./FleetMap"), { ssr: false });
+
+// Recharts measures the DOM, so keep the Load graphs client-only too.
+const LoadCharts = dynamic(() => import("./LoadCharts"), { ssr: false });
 
 // Mock container data for the Riga fleet live map & status table
-interface ContainerItem {
+export interface ContainerItem {
   id: string;
   type: string;
   fill: number;
@@ -34,6 +34,38 @@ interface ContainerItem {
   coords: [number, number];
   status: "normal" | "warning" | "critical";
 }
+
+// Sortable columns for the container status table
+type SortKey = "id" | "fill" | "hubs" | "days";
+type SortDirection = "asc" | "desc";
+
+// Comparable value for a given sort column. "hubs" ranks by number of online hubs.
+function sortValue(item: ContainerItem, key: SortKey): number | string {
+  switch (key) {
+    case "id":
+      return item.id;
+    case "fill":
+      return item.fill;
+    case "days":
+      return item.days;
+    case "hubs":
+      return (item.hubs.a ? 1 : 0) + (item.hubs.b ? 1 : 0);
+  }
+}
+
+// Solid progress-bar colour by fill level (shared look with the map markers).
+function fillBarColor(fill: number): string {
+  if (fill > 90) return "bg-rose-500";
+  if (fill > 50) return "bg-amber-500";
+  return "bg-emerald-500";
+}
+
+// Badge styling for a container status, used in the details view.
+const STATUS_BADGE: Record<ContainerItem["status"], string> = {
+  normal: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  warning: "bg-amber-50 text-amber-700 border border-amber-200",
+  critical: "bg-rose-50 text-rose-700 border border-rose-200",
+};
 
 const INITIAL_CONTAINERS: ContainerItem[] = [
   { id: "KC8U-003", type: "KC-8U", fill: 2, hubs: { a: true, b: true }, days: 8, coords: [56.9520, 24.1000], status: "normal" },
@@ -73,6 +105,25 @@ const translations = {
     footerSpec: "Sensifies Pilot Vadības Panelis - Clean R Projekta Specifikācija 1.0",
     fillLevel: "Pildījuma līmenis:",
     daysActive: "Aktīvs dienas:",
+    detailsTitle: "Konteineru detalizēts pārskats",
+    detailStatus: "Statuss",
+    detailCoords: "Koordinātas",
+    detailHubs: "Mezgli A/B",
+    detailDays: "Aktīvs",
+    statusNormal: "Normāls",
+    statusWarning: "Brīdinājums",
+    statusCritical: "Kritisks",
+    noResults: "Nav atrasts neviens konteiners",
+    loadTitle: "Noslodzes grafiki",
+    loadCurrentFill: "Pašreizējais pildījums pēc konteinera",
+    loadOverTime: "Pildījums laika gaitā (6h)",
+    loadByStatus: "Konteineri pēc statusa",
+    loadByType: "Vidējais pildījums pēc tipa",
+    warningsTitle: "Brīdinājumu apstiprināšana",
+    acknowledge: "Apstiprināt",
+    acknowledged: "Apstiprināts",
+    acknowledgeAll: "Apstiprināt visus",
+    allClear: "Nav aktīvu brīdinājumu",
   },
   en: {
     subtitle: "Dual-Hub Radar Waste Level & Operations Dashboard",
@@ -101,19 +152,47 @@ const translations = {
     footerSpec: "Sensifies Pilot Dashboard - Clean R Project Specification 1.0",
     fillLevel: "Fill Level:",
     daysActive: "Days active:",
+    detailsTitle: "Container Detailed Overview",
+    detailStatus: "Status",
+    detailCoords: "Coordinates",
+    detailHubs: "Hubs A/B",
+    detailDays: "Active",
+    statusNormal: "Normal",
+    statusWarning: "Warning",
+    statusCritical: "Critical",
+    noResults: "No containers found",
+    loadTitle: "Load Graphs",
+    loadCurrentFill: "Current Fill by Container",
+    loadOverTime: "Fill Over Time (6h)",
+    loadByStatus: "Containers by Status",
+    loadByType: "Average Fill by Type",
+    warningsTitle: "Warnings Acknowledgment",
+    acknowledge: "Acknowledge",
+    acknowledged: "Acknowledged",
+    acknowledgeAll: "Acknowledge All",
+    allClear: "No active warnings",
   }
 };
 
 export default function DashboardPage() {
-  const [containers, setContainers] = useState<ContainerItem[]>(INITIAL_CONTAINERS);
+  const [containers] = useState<ContainerItem[]>(INITIAL_CONTAINERS);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("All Container Types");
   const [simulationActive, setSimulationActive] = useState(true);
   const [speedMultiplier, setSpeedMultiplier] = useState(60);
   const [activeTab, setActiveTab] = useState("Parks");
   const [lang, setLang] = useState<"lv" | "en">("lv");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [acknowledged, setAcknowledged] = useState<string[]>([]);
 
   const t = translations[lang];
+
+  // Containers in a warning/critical state drive the Warnings panel and badge.
+  const alertContainers = containers.filter((c) => c.status !== "normal");
+  const unacknowledgedCount = alertContainers.filter((c) => !acknowledged.includes(c.id)).length;
+
+  const acknowledgeAll = () => setAcknowledged(alertContainers.map((c) => c.id));
 
   // Filter logic for containers
   const filteredContainers = containers.filter((item) => {
@@ -121,6 +200,35 @@ export default function DashboardPage() {
     const matchesType = selectedType === "All Container Types" || item.type === selectedType;
     return matchesSearch && matchesType;
   });
+
+  // Sort the (already filtered) rows for the status table. The map keeps using
+  // the unsorted filtered list since ordering is irrelevant there.
+  const sortedContainers = [...filteredContainers];
+  if (sortKey) {
+    sortedContainers.sort((a, b) => {
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const renderSortIcon = (key: SortKey) => {
+    if (sortKey !== key) return <ChevronsUpDown className="h-3 w-3 text-slate-300" />;
+    return sortDir === "asc"
+      ? <ChevronUp className="h-3 w-3 text-emerald-600" />
+      : <ChevronDown className="h-3 w-3 text-emerald-600" />;
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800">
@@ -203,13 +311,19 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1.5 bg-rose-50 border border-rose-200 text-rose-700 px-3 py-1 rounded-full text-xs font-semibold">
+          <button
+            onClick={() => setActiveTab("Warnings")}
+            className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold transition border ${activeTab === "Warnings" ? 'bg-rose-600 border-rose-600 text-white' : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'}`}
+          >
             <AlertTriangle className="h-3.5 w-3.5" />
             <span>{t.warnings}</span>
-            <span className="bg-rose-600 text-white rounded-full px-1.5 py-0.2 text-[10px]">3</span>
-          </div>
-          <button className="flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition border border-slate-200">
-            <Activity className="h-3.5 w-3.5 text-slate-500" />
+            <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${activeTab === "Warnings" ? 'bg-white text-rose-700' : 'bg-rose-600 text-white'}`}>{unacknowledgedCount}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("Load")}
+            className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${activeTab === "Load" ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'}`}
+          >
+            <Activity className={`h-3.5 w-3.5 ${activeTab === "Load" ? 'text-white' : 'text-slate-500'}`} />
             <span>{t.load}</span>
           </button>
         </div>
@@ -217,7 +331,8 @@ export default function DashboardPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 p-6 space-y-6 max-w-[1600px] w-full mx-auto">
-        {/* Filters and Search Bar Row */}
+        {/* Filters and Search Bar Row (only for the container list views) */}
+        {(activeTab === "Parks" || activeTab === "Detalizēta informācija") && (
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3 w-full md:w-96">
             <div className="relative w-full">
@@ -227,7 +342,7 @@ export default function DashboardPage() {
                 placeholder={t.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
               />
             </div>
           </div>
@@ -247,8 +362,10 @@ export default function DashboardPage() {
             </span>
           </div>
         </div>
+        )}
 
-        {/* Dashboard Grid: Map Section & Status Table Section */}
+        {/* Parks tab: live map + status table */}
+        {activeTab === "Parks" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Leaflet Map Card (7 Cols) */}
@@ -264,29 +381,12 @@ export default function DashboardPage() {
             </div>
 
             {/* Map Container View */}
-            <div className="h-[520px] w-full relative z-0">
-              <MapContainer 
-                center={[56.9496, 24.1052]} 
-                zoom={13} 
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                
-                {filteredContainers.map((item) => (
-                  <Marker key={item.id} position={item.coords}>
-                    <Popup>
-                      <div className="p-1 space-y-1">
-                        <p className="font-bold text-sm text-slate-900">{item.id} ({item.type})</p>
-                        <p className="text-xs text-slate-600">{t.fillLevel} <span className="font-semibold">{item.fill}%</span></p>
-                        <p className="text-xs text-slate-600">{t.daysActive} {item.days}d</p>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
+            <div className="h-130 w-full relative z-0">
+              <FleetMap
+                containers={filteredContainers}
+                fillLabel={t.fillLevel}
+                daysLabel={t.daysActive}
+              />
             </div>
           </div>
 
@@ -301,14 +401,50 @@ export default function DashboardPage() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-semibold">
-                    <th className="py-2.5 px-4">{t.tableIdType}</th>
-                    <th className="py-2.5 px-4">{t.tableFill}</th>
-                    <th className="py-2.5 px-4 text-center">{t.tableHubsAB}</th>
-                    <th className="py-2.5 px-4 text-right">{t.tableDays}</th>
+                    <th className="py-2.5 px-4">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("id")}
+                        className="flex items-center space-x-1 uppercase tracking-wider hover:text-slate-700 transition select-none"
+                      >
+                        <span>{t.tableIdType}</span>
+                        {renderSortIcon("id")}
+                      </button>
+                    </th>
+                    <th className="py-2.5 px-4">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("fill")}
+                        className="flex items-center space-x-1 uppercase tracking-wider hover:text-slate-700 transition select-none"
+                      >
+                        <span>{t.tableFill}</span>
+                        {renderSortIcon("fill")}
+                      </button>
+                    </th>
+                    <th className="py-2.5 px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("hubs")}
+                        className="flex items-center justify-center space-x-1 mx-auto uppercase tracking-wider hover:text-slate-700 transition select-none"
+                      >
+                        <span>{t.tableHubsAB}</span>
+                        {renderSortIcon("hubs")}
+                      </button>
+                    </th>
+                    <th className="py-2.5 px-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("days")}
+                        className="flex items-center justify-end space-x-1 ml-auto uppercase tracking-wider hover:text-slate-700 transition select-none"
+                      >
+                        <span>{t.tableDays}</span>
+                        {renderSortIcon("days")}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredContainers.map((item) => {
+                  {sortedContainers.map((item) => {
                     let fillBadgeStyle = "bg-emerald-50 text-emerald-700 border border-emerald-200";
                     if (item.fill > 50 && item.fill <= 90) fillBadgeStyle = "bg-amber-50 text-amber-700 border border-amber-200";
                     if (item.fill > 90) fillBadgeStyle = "bg-rose-50 text-rose-700 border border-rose-200";
@@ -353,6 +489,153 @@ export default function DashboardPage() {
           </div>
 
         </div>
+        )}
+
+        {/* Details tab: per-container detailed overview */}
+        {activeTab === "Detalizēta informācija" && (
+          <div>
+            <h2 className="text-xs font-bold text-slate-700 tracking-wider uppercase mb-4">{t.detailsTitle}</h2>
+            {filteredContainers.length === 0 ? (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center text-sm text-slate-500">
+                {t.noResults}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredContainers.map((item) => {
+                  const statusLabel =
+                    item.status === "critical" ? t.statusCritical :
+                    item.status === "warning" ? t.statusWarning : t.statusNormal;
+                  return (
+                    <div key={item.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="font-bold text-slate-900 text-sm">{item.id}</div>
+                          <div className="text-[11px] text-slate-400">{item.type}</div>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[item.status]}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-[11px] mb-1">
+                          <span className="text-slate-500">{t.fillLevel}</span>
+                          <span className="font-bold text-slate-700">{item.fill}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${fillBarColor(item.fill)}`} style={{ width: `${item.fill}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-[11px] pt-1 border-t border-slate-100">
+                        <div>
+                          <div className="text-slate-400 uppercase tracking-wider mb-1">{t.detailHubs}</div>
+                          <div className="flex items-center space-x-2">
+                            <span className="flex items-center space-x-1">
+                              <span className={`h-2 w-2 rounded-full ${item.hubs.a ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                              <span className="text-slate-500 font-medium">A</span>
+                            </span>
+                            <span className="flex items-center space-x-1">
+                              <span className={`h-2 w-2 rounded-full ${item.hubs.b ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                              <span className="text-slate-500 font-medium">B</span>
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400 uppercase tracking-wider mb-1">{t.detailDays}</div>
+                          <div className="font-semibold text-slate-700">{item.days}d</div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="text-slate-400 uppercase tracking-wider mb-1">{t.detailCoords}</div>
+                          <div className="font-mono text-slate-600">{item.coords[0].toFixed(4)}, {item.coords[1].toFixed(4)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Load tab: recharts load graphs */}
+        {activeTab === "Load" && (
+          <div>
+            <h2 className="text-xs font-bold text-slate-700 tracking-wider uppercase mb-4">{t.loadTitle}</h2>
+            <LoadCharts
+              containers={containers}
+              labels={{
+                currentFill: t.loadCurrentFill,
+                overTime: t.loadOverTime,
+                byStatus: t.loadByStatus,
+                byType: t.loadByType,
+                normal: t.statusNormal,
+                warning: t.statusWarning,
+                critical: t.statusCritical,
+              }}
+            />
+          </div>
+        )}
+
+        {/* Warnings tab: acknowledge active alerts */}
+        {activeTab === "Warnings" && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xs font-bold text-slate-700 tracking-wider uppercase">{t.warningsTitle}</h2>
+              {unacknowledgedCount > 0 && (
+                <button
+                  onClick={acknowledgeAll}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition"
+                >
+                  {t.acknowledgeAll}
+                </button>
+              )}
+            </div>
+            {alertContainers.length === 0 ? (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center text-sm text-slate-500 flex items-center justify-center space-x-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                <span>{t.allClear}</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {alertContainers.map((item) => {
+                  const isAck = acknowledged.includes(item.id);
+                  const statusLabel = item.status === "critical" ? t.statusCritical : t.statusWarning;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`bg-white rounded-xl border shadow-sm p-4 flex items-center justify-between gap-4 transition ${isAck ? 'border-slate-200 opacity-60' : item.status === "critical" ? 'border-rose-200' : 'border-amber-200'}`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <AlertTriangle className={`h-5 w-5 ${item.status === "critical" ? 'text-rose-500' : 'text-amber-500'}`} />
+                        <div>
+                          <div className="font-bold text-slate-900 text-sm">{item.id} <span className="text-[11px] font-normal text-slate-400">({item.type})</span></div>
+                          <div className="text-[11px] text-slate-500">
+                            <span className={`font-semibold ${item.status === "critical" ? 'text-rose-600' : 'text-amber-600'}`}>{statusLabel}</span>
+                            {" · "}{t.fillLevel} {item.fill}% · {t.daysActive} {item.days}d
+                          </div>
+                        </div>
+                      </div>
+                      {isAck ? (
+                        <span className="flex items-center space-x-1 text-xs font-semibold text-emerald-600">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span>{t.acknowledged}</span>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setAcknowledged((prev) => [...prev, item.id])}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition whitespace-nowrap"
+                        >
+                          {t.acknowledge}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Footer Specification Note */}
