@@ -15,7 +15,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import type { ContainerItem } from "./page";
+import type { ContainerItem } from "./data";
 
 // Hex equivalents of the fill-level palette used across the dashboard.
 const EMERALD = "#059669";

@@ -2,7 +2,8 @@
 
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
-import type { ContainerItem } from "./page";
+import Link from "next/link";
+import type { ContainerItem } from "./data";
 
 // Solid marker colour driven by fill level (matches the table / details palette).
 function fillColor(fill: number): string {
@@ -28,11 +29,14 @@ interface FleetMapProps {
   containers: ContainerItem[];
   fillLabel: string;
   daysLabel: string;
+  center?: [number, number];
+  zoom?: number;
+  detailsLabel?: string;
 }
 
-export default function FleetMap({ containers, fillLabel, daysLabel }: FleetMapProps) {
+export default function FleetMap({ containers, fillLabel, daysLabel, center, zoom, detailsLabel }: FleetMapProps) {
   return (
-    <MapContainer center={[56.9496, 24.1052]} zoom={13} style={{ height: "100%", width: "100%" }}>
+    <MapContainer center={center ?? [56.9496, 24.1052]} zoom={zoom ?? 13} style={{ height: "100%", width: "100%" }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -44,6 +48,9 @@ export default function FleetMap({ containers, fillLabel, daysLabel }: FleetMapP
               <p className="font-bold text-sm text-slate-900">{item.id} ({item.type})</p>
               <p className="text-xs text-slate-600">{fillLabel} <span className="font-semibold">{item.fill}%</span></p>
               <p className="text-xs text-slate-600">{daysLabel} {item.days}d</p>
+              <Link href={`/container/${item.id}`} className="inline-block text-xs font-semibold text-emerald-600 hover:underline pt-1">
+                {detailsLabel ?? "View details"} →
+              </Link>
             </div>
           </Popup>
         </Marker>

@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { INITIAL_CONTAINERS, type ContainerItem } from "./data";
 import {
   Truck,
   AlertTriangle,
@@ -24,17 +26,6 @@ const FleetMap = dynamic(() => import("./FleetMap"), { ssr: false });
 // Recharts measures the DOM, so keep the Load graphs client-only too.
 const LoadCharts = dynamic(() => import("./LoadCharts"), { ssr: false });
 
-// Mock container data for the Riga fleet live map & status table
-export interface ContainerItem {
-  id: string;
-  type: string;
-  fill: number;
-  hubs: { a: boolean; b: boolean };
-  days: number;
-  coords: [number, number];
-  status: "normal" | "warning" | "critical";
-}
-
 // Sortable columns for the container status table
 type SortKey = "id" | "fill" | "hubs" | "days";
 type SortDirection = "asc" | "desc";
@@ -49,7 +40,7 @@ function sortValue(item: ContainerItem, key: SortKey): number | string {
     case "days":
       return item.days;
     case "hubs":
-      return (item.hubs.a ? 1 : 0) + (item.hubs.b ? 1 : 0);
+      return (item.hubs.a.online ? 1 : 0) + (item.hubs.b.online ? 1 : 0);
   }
 }
 
@@ -66,15 +57,6 @@ const STATUS_BADGE: Record<ContainerItem["status"], string> = {
   warning: "bg-amber-50 text-amber-700 border border-amber-200",
   critical: "bg-rose-50 text-rose-700 border border-rose-200",
 };
-
-const INITIAL_CONTAINERS: ContainerItem[] = [
-  { id: "KC8U-003", type: "KC-8U", fill: 2, hubs: { a: true, b: true }, days: 8, coords: [56.9520, 24.1000], status: "normal" },
-  { id: "KC8U-001", type: "KC-8U", fill: 46, hubs: { a: true, b: true }, days: 4, coords: [56.9500, 24.1080], status: "normal" },
-  { id: "KC8U-002", type: "KC-8U", fill: 50, hubs: { a: true, b: false }, days: 6, coords: [56.9470, 24.1150], status: "warning" },
-  { id: "K15-001", type: "K-15", fill: 83, hubs: { a: true, b: false }, days: 9, coords: [56.9430, 24.0950], status: "critical" },
-  { id: "K15-002", type: "K-15", fill: 43, hubs: { a: true, b: true }, days: 5, coords: [56.9450, 24.1050], status: "normal" },
-  { id: "K15-003", type: "K-15", fill: 93, hubs: { a: true, b: true }, days: 12, coords: [56.9410, 24.1200], status: "critical" },
-];
 
 // Dictionary translations for LV and EN
 const translations = {
@@ -124,6 +106,7 @@ const translations = {
     acknowledged: "Apstiprināts",
     acknowledgeAll: "Apstiprināt visus",
     allClear: "Nav aktīvu brīdinājumu",
+    viewDetails: "Skatīt detaļas",
   },
   en: {
     subtitle: "Dual-Hub Radar Waste Level & Operations Dashboard",
@@ -171,6 +154,7 @@ const translations = {
     acknowledged: "Acknowledged",
     acknowledgeAll: "Acknowledge All",
     allClear: "No active warnings",
+    viewDetails: "View details",
   }
 };
 
@@ -386,6 +370,7 @@ export default function DashboardPage() {
                 containers={filteredContainers}
                 fillLabel={t.fillLevel}
                 daysLabel={t.daysActive}
+                detailsLabel={t.viewDetails}
               />
             </div>
           </div>
@@ -452,7 +437,7 @@ export default function DashboardPage() {
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/85 transition">
                         <td className="py-3 px-4">
-                          <div className="font-bold text-slate-900">{item.id}</div>
+                          <Link href={`/container/${item.id}`} className="font-bold text-slate-900 hover:text-emerald-600 transition">{item.id}</Link>
                           <div className="text-[11px] text-slate-400">{item.type}</div>
                         </td>
                         <td className="py-3 px-4">
@@ -462,12 +447,12 @@ export default function DashboardPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center justify-center space-x-2">
-                            <span className="flex items-center space-x-1" title={item.hubs.a ? "Hub A Online" : "Hub A Offline"}>
-                              <span className={`h-2 w-2 rounded-full ${item.hubs.a ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                            <span className="flex items-center space-x-1" title={item.hubs.a.online ? "Hub A Online" : "Hub A Offline"}>
+                              <span className={`h-2 w-2 rounded-full ${item.hubs.a.online ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                               <span className="text-[10px] text-slate-500 font-medium">A</span>
                             </span>
-                            <span className="flex items-center space-x-1" title={item.hubs.b ? "Hub B Online" : "Hub B Offline"}>
-                              <span className={`h-2 w-2 rounded-full ${item.hubs.b ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                            <span className="flex items-center space-x-1" title={item.hubs.b.online ? "Hub B Online" : "Hub B Offline"}>
+                              <span className={`h-2 w-2 rounded-full ${item.hubs.b.online ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                               <span className="text-[10px] text-slate-500 font-medium">B</span>
                             </span>
                           </div>
@@ -506,7 +491,7 @@ export default function DashboardPage() {
                     item.status === "critical" ? t.statusCritical :
                     item.status === "warning" ? t.statusWarning : t.statusNormal;
                   return (
-                    <div key={item.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+                    <Link key={item.id} href={`/container/${item.id}`} className="block bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3 hover:border-emerald-300 hover:shadow-md transition">
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="font-bold text-slate-900 text-sm">{item.id}</div>
@@ -532,11 +517,11 @@ export default function DashboardPage() {
                           <div className="text-slate-400 uppercase tracking-wider mb-1">{t.detailHubs}</div>
                           <div className="flex items-center space-x-2">
                             <span className="flex items-center space-x-1">
-                              <span className={`h-2 w-2 rounded-full ${item.hubs.a ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                              <span className={`h-2 w-2 rounded-full ${item.hubs.a.online ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                               <span className="text-slate-500 font-medium">A</span>
                             </span>
                             <span className="flex items-center space-x-1">
-                              <span className={`h-2 w-2 rounded-full ${item.hubs.b ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                              <span className={`h-2 w-2 rounded-full ${item.hubs.b.online ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                               <span className="text-slate-500 font-medium">B</span>
                             </span>
                           </div>
@@ -550,7 +535,7 @@ export default function DashboardPage() {
                           <div className="font-mono text-slate-600">{item.coords[0].toFixed(4)}, {item.coords[1].toFixed(4)}</div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
