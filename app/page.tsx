@@ -14,7 +14,9 @@ import {
   Clock,
   ChevronUp,
   ChevronDown,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Menu,
+  X
 } from "lucide-react";
 
 // Leaflet touches `window` at import time and relies on React context shared
@@ -169,6 +171,7 @@ export default function DashboardPage() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
   const [acknowledged, setAcknowledged] = useState<string[]>([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const t = translations[lang];
 
@@ -215,133 +218,187 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800">
+    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 antialiased">
       {/* Top Header Navigation */}
-      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className="bg-emerald-600 text-white p-2 rounded-lg flex items-center justify-center shadow">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-emerald-600 text-white p-2 rounded-xl flex items-center justify-center shadow-sm">
               <Truck className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h1 className="font-bold text-lg text-slate-900 tracking-tight">SENSIFIES</h1>
-                <span className="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">Clean R Pilot</span>
+                <h1 className="font-bold text-base sm:text-lg text-slate-900 tracking-tight">SENSIFIES</h1>
+                <span className="text-[10px] sm:text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">Clean R Pilot</span>
               </div>
-              <p className="text-xs text-slate-500">{t.subtitle}</p>
+              <p className="text-[11px] sm:text-xs text-slate-500 hidden sm:block">{t.subtitle}</p>
             </div>
           </div>
-        </div>
 
-        {/* Simulation Toolbar & Status indicators */}
-        <div className="flex items-center space-x-4 text-sm">
-          <div className="hidden md:flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>MQTT Broker: mosquitto:9001 (WebSocket)</span>
-          </div>
+          {/* Desktop Right Header Controls */}
+          <div className="hidden lg:flex items-center space-x-4 text-sm">
+            <div className="flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>MQTT Broker: mosquitto:9001 (WebSocket)</span>
+            </div>
 
-          <div className="flex items-center space-x-3 bg-slate-50 px-3 py-1 rounded-lg border border-slate-200">
-            <button 
-              onClick={() => setSimulationActive(!simulationActive)}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition ${simulationActive ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-200 text-slate-700'}`}
-            >
-              {simulationActive ? t.simActive : t.simPaused}
-            </button>
-            <div className="flex items-center space-x-1 text-xs text-slate-600 font-medium">
-              <Clock className="h-3.5 w-3.5 text-slate-400" />
-              <span>{t.speed}</span>
-              <span className="font-bold text-slate-900">{speedMultiplier}x</span>
+            <div className="flex items-center space-x-3 bg-slate-50 px-3 py-1 rounded-lg border border-slate-200">
               <button 
-                onClick={() => setSpeedMultiplier(speedMultiplier === 60 ? 120 : 60)}
-                className="text-emerald-600 hover:underline font-semibold ml-1"
+                onClick={() => setSimulationActive(!simulationActive)}
+                className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${simulationActive ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 text-slate-700'}`}
               >
-                {t.toggle}
+                {simulationActive ? t.simActive : t.simPaused}
+              </button>
+              <div className="flex items-center space-x-1 text-xs text-slate-600 font-medium">
+                <Clock className="h-3.5 w-3.5 text-slate-400" />
+                <span>{t.speed}</span>
+                <span className="font-bold text-slate-900">{speedMultiplier}x</span>
+                <button 
+                  onClick={() => setSpeedMultiplier(speedMultiplier === 60 ? 120 : 60)}
+                  className="text-emerald-600 hover:underline font-semibold ml-1 cursor-pointer"
+                >
+                  {t.toggle}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button 
+                onClick={() => setLang("lv")}
+                className={`text-xs font-bold px-3 py-1 rounded-lg transition cursor-pointer ${lang === "lv" ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                LV
+              </button>
+              <button 
+                onClick={() => setLang("en")}
+                className={`text-xs font-bold px-3 py-1 rounded-lg transition cursor-pointer ${lang === "en" ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                EN
               </button>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          {/* Mobile Menu Toggle & Lang Switcher */}
+          <div className="flex items-center space-x-2 lg:hidden">
+            <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button 
+                onClick={() => setLang("lv")}
+                className={`text-[11px] font-bold px-2 py-0.5 rounded transition ${lang === "lv" ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'}`}
+              >
+                LV
+              </button>
+              <button 
+                onClick={() => setLang("en")}
+                className={`text-[11px] font-bold px-2 py-0.5 rounded transition ${lang === "en" ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'}`}
+              >
+                EN
+              </button>
+            </div>
             <button 
-              onClick={() => setLang("lv")}
-              className={`text-xs font-medium px-3 py-1.5 rounded-lg transition ${lang === "lv" ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
+              aria-label="Toggle menu"
             >
-              LV
-            </button>
-            <button 
-              onClick={() => setLang("en")}
-              className={`text-xs font-medium px-3 py-1.5 rounded-lg transition ${lang === "en" ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'}`}
-            >
-              EN
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown Panel */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-white border-t border-slate-200 px-4 py-4 space-y-3 shadow-lg">
+            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <span className="text-xs font-medium text-slate-700">{simulationActive ? t.simActive : t.simPaused}</span>
+              <button 
+                onClick={() => setSimulationActive(!simulationActive)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold ${simulationActive ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}
+              >
+                {simulationActive ? t.simActive : t.simPaused}
+              </button>
+            </div>
+            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700">
+              <span className="font-medium">{t.speed}</span>
+              <button 
+                onClick={() => setSpeedMultiplier(speedMultiplier === 60 ? 120 : 60)}
+                className="font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200"
+              >
+                {speedMultiplier}x ({t.toggle})
+              </button>
+            </div>
+            <div className="text-[10px] text-slate-400 text-center pt-1">
+              MQTT Broker: mosquitto:9001 (WebSocket)
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Secondary Sub-nav Bar */}
-      <div className="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between">
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => setActiveTab("Parks")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${activeTab === "Parks" ? 'bg-emerald-700 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-          >
-            {t.parks}
-          </button>
-          <button 
-            onClick={() => setActiveTab("Detalizēta informācija")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${activeTab === "Detalizēta informācija" ? 'bg-emerald-700 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-          >
-            {t.details}
-          </button>
-        </div>
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5">
+        <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex space-x-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+            <button 
+              onClick={() => setActiveTab("Parks")}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${activeTab === "Parks" ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              {t.parks}
+            </button>
+            <button 
+              onClick={() => setActiveTab("Detalizēta informācija")}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${activeTab === "Detalizēta informācija" ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              {t.details}
+            </button>
+          </div>
 
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setActiveTab("Warnings")}
-            className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold transition border ${activeTab === "Warnings" ? 'bg-rose-600 border-rose-600 text-white' : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'}`}
-          >
-            <AlertTriangle className="h-3.5 w-3.5" />
-            <span>{t.warnings}</span>
-            <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${activeTab === "Warnings" ? 'bg-white text-rose-700' : 'bg-rose-600 text-white'}`}>{unacknowledgedCount}</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("Load")}
-            className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${activeTab === "Load" ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'}`}
-          >
-            <Activity className={`h-3.5 w-3.5 ${activeTab === "Load" ? 'text-white' : 'text-slate-500'}`} />
-            <span>{t.load}</span>
-          </button>
+          <div className="flex items-center justify-between sm:justify-end space-x-3 w-full sm:w-auto">
+            <button
+              onClick={() => setActiveTab("Warnings")}
+              className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold transition border cursor-pointer ${activeTab === "Warnings" ? 'bg-rose-600 border-rose-600 text-white' : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'}`}
+            >
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span>{t.warnings}</span>
+              <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${activeTab === "Warnings" ? 'bg-white text-rose-700' : 'bg-rose-600 text-white'}`}>{unacknowledgedCount}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("Load")}
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition border cursor-pointer ${activeTab === "Load" ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'}`}
+            >
+              <Activity className={`h-3.5 w-3.5 shrink-0 ${activeTab === "Load" ? 'text-white' : 'text-slate-500'}`} />
+              <span>{t.load}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-6 space-y-6 max-w-[1600px] w-full mx-auto">
+      <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-[1600px] w-full mx-auto">
         {/* Filters and Search Bar Row (only for the container list views) */}
         {(activeTab === "Parks" || activeTab === "Detalizēta informācija") && (
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3 w-full md:w-96">
             <div className="relative w-full">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
               <input 
                 type="text" 
                 placeholder={t.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full pl-10 pr-4 py-2 bg-slate-50/75 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
               />
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <select 
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="bg-slate-50/75 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="All Container Types">{t.allTypes}</option>
               <option value="KC-8U">KC-8U</option>
               <option value="K-15">K-15</option>
             </select>
-            <span className="text-xs text-slate-500 font-medium">
+            <span className="text-xs text-slate-500 font-medium text-center sm:text-left">
               {t.showing} <strong className="text-slate-800">{filteredContainers.length}</strong> {t.activeContainers}
             </span>
           </div>
@@ -353,19 +410,19 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Leaflet Map Card (7 Cols) */}
-          <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col overflow-hidden">
+            <div className="px-4 sm:px-5 py-3.5 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-emerald-600" />
-                <h2 className="text-xs font-bold text-slate-700 tracking-wider uppercase">{t.mapTitle}</h2>
+                <h2 className="text-xs sm:text-sm font-bold text-slate-700 tracking-wider uppercase">{t.mapTitle}</h2>
               </div>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full">
                 {t.clusterActive} - {filteredContainers.length} {t.markers}
               </span>
             </div>
 
             {/* Map Container View */}
-            <div className="h-130 w-full relative z-0">
+            <div className="h-[400px] sm:h-[520px] w-full relative z-0">
               <FleetMap
                 containers={filteredContainers}
                 fillLabel={t.fillLevel}
@@ -376,51 +433,51 @@ export default function DashboardPage() {
           </div>
 
           {/* Container Status Table Card (5 Cols) */}
-          <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-xs font-bold text-slate-700 tracking-wider uppercase">{t.tableTitle}</h2>
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{t.tableHubHealth}</span>
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col overflow-hidden">
+            <div className="px-4 sm:px-5 py-3.5 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-700 tracking-wider uppercase">{t.tableTitle}</h2>
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.tableHubHealth}</span>
             </div>
 
             <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
-                  <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-semibold">
-                    <th className="py-2.5 px-4">
+                  <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-semibold text-[11px] sm:text-xs">
+                    <th className="py-3 px-4">
                       <button
                         type="button"
                         onClick={() => handleSort("id")}
-                        className="flex items-center space-x-1 uppercase tracking-wider hover:text-slate-700 transition select-none"
+                        className="flex items-center space-x-1 uppercase tracking-wider hover:text-slate-700 transition select-none cursor-pointer"
                       >
                         <span>{t.tableIdType}</span>
                         {renderSortIcon("id")}
                       </button>
                     </th>
-                    <th className="py-2.5 px-4">
+                    <th className="py-3 px-4">
                       <button
                         type="button"
                         onClick={() => handleSort("fill")}
-                        className="flex items-center space-x-1 uppercase tracking-wider hover:text-slate-700 transition select-none"
+                        className="flex items-center space-x-1 uppercase tracking-wider hover:text-slate-700 transition select-none cursor-pointer"
                       >
                         <span>{t.tableFill}</span>
                         {renderSortIcon("fill")}
                       </button>
                     </th>
-                    <th className="py-2.5 px-4 text-center">
+                    <th className="py-3 px-4 text-center">
                       <button
                         type="button"
                         onClick={() => handleSort("hubs")}
-                        className="flex items-center justify-center space-x-1 mx-auto uppercase tracking-wider hover:text-slate-700 transition select-none"
+                        className="flex items-center justify-center space-x-1 mx-auto uppercase tracking-wider hover:text-slate-700 transition select-none cursor-pointer"
                       >
                         <span>{t.tableHubsAB}</span>
                         {renderSortIcon("hubs")}
                       </button>
                     </th>
-                    <th className="py-2.5 px-4 text-right">
+                    <th className="py-3 px-4 text-right">
                       <button
                         type="button"
                         onClick={() => handleSort("days")}
-                        className="flex items-center justify-end space-x-1 ml-auto uppercase tracking-wider hover:text-slate-700 transition select-none"
+                        className="flex items-center justify-end space-x-1 ml-auto uppercase tracking-wider hover:text-slate-700 transition select-none cursor-pointer"
                       >
                         <span>{t.tableDays}</span>
                         {renderSortIcon("days")}
@@ -437,16 +494,16 @@ export default function DashboardPage() {
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/85 transition">
                         <td className="py-3 px-4">
-                          <Link href={`/container/${item.id}`} className="font-bold text-slate-900 hover:text-emerald-600 transition">{item.id}</Link>
-                          <div className="text-[11px] text-slate-400">{item.type}</div>
+                          <Link href={`/container/${item.id}`} className="font-bold text-slate-900 text-xs sm:text-sm hover:text-emerald-600 transition">{item.id}</Link>
+                          <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{item.type}</div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className={`inline-block px-2 py-0.5 rounded font-bold text-[11px] ${fillBadgeStyle}`}>
+                          <span className={`inline-block px-2 py-0.5 rounded-md font-bold text-[11px] sm:text-xs ${fillBadgeStyle}`}>
                             {item.fill}%
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center justify-center space-x-2">
+                          <div className="flex items-center justify-center space-x-2.5">
                             <span className="flex items-center space-x-1" title={item.hubs.a.online ? "Hub A Online" : "Hub A Offline"}>
                               <span className={`h-2 w-2 rounded-full ${item.hubs.a.online ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                               <span className="text-[10px] text-slate-500 font-medium">A</span>
@@ -457,7 +514,7 @@ export default function DashboardPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-right font-medium text-slate-600">
+                        <td className="py-3 px-4 text-right font-medium text-slate-600 text-xs sm:text-sm">
                           {item.days}d
                         </td>
                       </tr>
@@ -468,7 +525,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Footer Summary inside Table Card */}
-            <div className="p-3 bg-slate-50 border-t border-slate-200 text-center text-xs text-slate-500">
+            <div className="p-3 bg-slate-50/50 border-t border-slate-200 text-center text-[11px] sm:text-xs text-slate-500">
               {t.tableFooter}
             </div>
           </div>
@@ -481,7 +538,7 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-xs font-bold text-slate-700 tracking-wider uppercase mb-4">{t.detailsTitle}</h2>
             {filteredContainers.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center text-sm text-slate-500">
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-10 text-center text-sm text-slate-500">
                 {t.noResults}
               </div>
             ) : (
@@ -491,19 +548,19 @@ export default function DashboardPage() {
                     item.status === "critical" ? t.statusCritical :
                     item.status === "warning" ? t.statusWarning : t.statusNormal;
                   return (
-                    <Link key={item.id} href={`/container/${item.id}`} className="block bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3 hover:border-emerald-300 hover:shadow-md transition">
+                    <Link key={item.id} href={`/container/${item.id}`} className="block bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-5 space-y-3 hover:border-emerald-300 hover:shadow-md transition">
                       <div className="flex items-start justify-between">
                         <div>
-                          <div className="font-bold text-slate-900 text-sm">{item.id}</div>
-                          <div className="text-[11px] text-slate-400">{item.type}</div>
+                          <div className="font-bold text-slate-900 text-sm sm:text-base">{item.id}</div>
+                          <div className="text-[11px] text-slate-400 font-medium">{item.type}</div>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[item.status]}`}>
+                        <span className={`text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full ${STATUS_BADGE[item.status]}`}>
                           {statusLabel}
                         </span>
                       </div>
 
                       <div>
-                        <div className="flex items-center justify-between text-[11px] mb-1">
+                        <div className="flex items-center justify-between text-xs mb-1.5">
                           <span className="text-slate-500">{t.fillLevel}</span>
                           <span className="font-bold text-slate-700">{item.fill}%</span>
                         </div>
@@ -512,27 +569,27 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 text-[11px] pt-1 border-t border-slate-100">
+                      <div className="grid grid-cols-2 gap-3 text-xs pt-2 border-t border-slate-100">
                         <div>
-                          <div className="text-slate-400 uppercase tracking-wider mb-1">{t.detailHubs}</div>
-                          <div className="flex items-center space-x-2">
+                          <div className="text-slate-400 uppercase tracking-wider text-[10px] mb-1">{t.detailHubs}</div>
+                          <div className="flex items-center space-x-2.5">
                             <span className="flex items-center space-x-1">
                               <span className={`h-2 w-2 rounded-full ${item.hubs.a.online ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                              <span className="text-slate-500 font-medium">A</span>
+                              <span className="text-slate-600 font-medium">A</span>
                             </span>
                             <span className="flex items-center space-x-1">
                               <span className={`h-2 w-2 rounded-full ${item.hubs.b.online ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                              <span className="text-slate-500 font-medium">B</span>
+                              <span className="text-slate-600 font-medium">B</span>
                             </span>
                           </div>
                         </div>
                         <div>
-                          <div className="text-slate-400 uppercase tracking-wider mb-1">{t.detailDays}</div>
+                          <div className="text-slate-400 uppercase tracking-wider text-[10px] mb-1">{t.detailDays}</div>
                           <div className="font-semibold text-slate-700">{item.days}d</div>
                         </div>
                         <div className="col-span-2">
-                          <div className="text-slate-400 uppercase tracking-wider mb-1">{t.detailCoords}</div>
-                          <div className="font-mono text-slate-600">{item.coords[0].toFixed(4)}, {item.coords[1].toFixed(4)}</div>
+                          <div className="text-slate-400 uppercase tracking-wider text-[10px] mb-1">{t.detailCoords}</div>
+                          <div className="font-mono text-slate-600 text-[11px]">{item.coords[0].toFixed(4)}, {item.coords[1].toFixed(4)}</div>
                         </div>
                       </div>
                     </Link>
@@ -570,14 +627,14 @@ export default function DashboardPage() {
               {unacknowledgedCount > 0 && (
                 <button
                   onClick={acknowledgeAll}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer"
                 >
                   {t.acknowledgeAll}
                 </button>
               )}
             </div>
             {alertContainers.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center text-sm text-slate-500 flex items-center justify-center space-x-2">
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-10 text-center text-sm text-slate-500 flex items-center justify-center space-x-2">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                 <span>{t.allClear}</span>
               </div>
@@ -589,31 +646,33 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={item.id}
-                      className={`bg-white rounded-xl border shadow-sm p-4 flex items-center justify-between gap-4 transition ${isAck ? 'border-slate-200 opacity-60' : item.status === "critical" ? 'border-rose-200' : 'border-amber-200'}`}
+                      className={`bg-white rounded-2xl border shadow-xs p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition ${isAck ? 'border-slate-200 opacity-60' : item.status === "critical" ? 'border-rose-200' : 'border-amber-200'}`}
                     >
-                      <div className="flex items-center space-x-3">
-                        <AlertTriangle className={`h-5 w-5 ${item.status === "critical" ? 'text-rose-500' : 'text-amber-500'}`} />
+                      <div className="flex items-start sm:items-center space-x-3">
+                        <AlertTriangle className={`h-5 w-5 mt-0.5 sm:mt-0 shrink-0 ${item.status === "critical" ? 'text-rose-500' : 'text-amber-500'}`} />
                         <div>
-                          <div className="font-bold text-slate-900 text-sm">{item.id} <span className="text-[11px] font-normal text-slate-400">({item.type})</span></div>
-                          <div className="text-[11px] text-slate-500">
+                          <div className="font-bold text-slate-900 text-sm sm:text-base">{item.id} <span className="text-[11px] font-normal text-slate-400">({item.type})</span></div>
+                          <div className="text-xs text-slate-500">
                             <span className={`font-semibold ${item.status === "critical" ? 'text-rose-600' : 'text-amber-600'}`}>{statusLabel}</span>
                             {" · "}{t.fillLevel} {item.fill}% · {t.daysActive} {item.days}d
                           </div>
                         </div>
                       </div>
-                      {isAck ? (
-                        <span className="flex items-center space-x-1 text-xs font-semibold text-emerald-600">
-                          <CheckCircle2 className="h-4 w-4" />
-                          <span>{t.acknowledged}</span>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => setAcknowledged((prev) => [...prev, item.id])}
-                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition whitespace-nowrap"
-                        >
-                          {t.acknowledge}
-                        </button>
-                      )}
+                      <div className="flex justify-end sm:justify-start">
+                        {isAck ? (
+                          <span className="flex items-center space-x-1 text-xs font-semibold text-emerald-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span>{t.acknowledged}</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setAcknowledged((prev) => [...prev, item.id])}
+                            className="text-xs font-semibold px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition whitespace-nowrap cursor-pointer"
+                          >
+                            {t.acknowledge}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -624,7 +683,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Footer Specification Note */}
-      <footer className="py-4 text-center text-xs text-slate-400 border-t border-slate-200 mt-auto bg-white">
+      <footer className="py-4 px-4 text-center text-xs text-slate-400 border-t border-slate-200 mt-auto bg-white">
         {t.footerSpec}
       </footer>
     </div>
