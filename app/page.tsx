@@ -14,9 +14,7 @@ import {
   Clock,
   ChevronUp,
   ChevronDown,
-  ChevronsUpDown,
-  Menu,
-  X
+  ChevronsUpDown
 } from "lucide-react";
 
 // Leaflet touches `window` at import time and relies on React context shared
@@ -171,7 +169,6 @@ export default function DashboardPage() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
   const [acknowledged, setAcknowledged] = useState<string[]>([]);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const t = translations[lang];
 
@@ -188,8 +185,7 @@ export default function DashboardPage() {
     return matchesSearch && matchesType;
   });
 
-  // Sort the (already filtered) rows for the status table. The map keeps using
-  // the unsorted filtered list since ordering is irrelevant there.
+  // Sort the (already filtered) rows for the status table.
   const sortedContainers = [...filteredContainers];
   if (sortKey) {
     sortedContainers.sort((a, b) => {
@@ -219,50 +215,70 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 antialiased">
-      {/* Top Header Navigation */}
+      {/* Top Header Navigation - Fully Stacked & Responsive */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-emerald-600 text-white p-2 rounded-xl flex items-center justify-center shadow-sm">
-              <Truck className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="font-bold text-base sm:text-lg text-slate-900 tracking-tight">SENSIFIES</h1>
-                <span className="text-[10px] sm:text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">Clean R Pilot</span>
+        <div className="max-w-[1600px] mx-auto px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          
+          {/* Logo & Title Section */}
+          <div className="flex items-center justify-between md:justify-start space-x-3">
+            <div className="flex items-center space-x-3">
+              <div className="bg-emerald-600 text-white p-2 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                <Truck className="h-5 w-5" />
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 hidden sm:block">{t.subtitle}</p>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h1 className="font-bold text-base text-slate-900 tracking-tight">SENSIFIES</h1>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">Clean R Pilot</span>
+                </div>
+                <p className="text-[11px] text-slate-500 hidden sm:block">{t.subtitle}</p>
+              </div>
+            </div>
+
+            {/* Mobile Language Switcher */}
+            <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200 md:hidden">
+              <button 
+                onClick={() => setLang("lv")}
+                className={`text-[11px] font-bold px-2.5 py-1 rounded transition ${lang === "lv" ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'}`}
+              >
+                LV
+              </button>
+              <button 
+                onClick={() => setLang("en")}
+                className={`text-[11px] font-bold px-2.5 py-1 rounded transition ${lang === "en" ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'}`}
+              >
+                EN
+              </button>
             </div>
           </div>
 
-          {/* Desktop Right Header Controls */}
-          <div className="hidden lg:flex items-center space-x-4 text-sm">
-            <div className="flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600">
+          {/* Simulation Toolbar & Desktop Language Switcher */}
+          <div className="flex flex-wrap items-center justify-between md:justify-end gap-2 pt-2 md:pt-0 border-t border-slate-100 md:border-0">
+            <div className="hidden lg:flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>MQTT Broker: mosquitto:9001 (WebSocket)</span>
+              <span>MQTT: mosquitto:9001</span>
             </div>
 
-            <div className="flex items-center space-x-3 bg-slate-50 px-3 py-1 rounded-lg border border-slate-200">
+            <div className="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 w-full sm:w-auto justify-between sm:justify-start">
               <button 
                 onClick={() => setSimulationActive(!simulationActive)}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer ${simulationActive ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 text-slate-700'}`}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${simulationActive ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 text-slate-700'}`}
               >
                 {simulationActive ? t.simActive : t.simPaused}
               </button>
-              <div className="flex items-center space-x-1 text-xs text-slate-600 font-medium">
+              <div className="flex items-center space-x-1.5 text-xs text-slate-600 font-medium pl-2">
                 <Clock className="h-3.5 w-3.5 text-slate-400" />
-                <span>{t.speed}</span>
-                <span className="font-bold text-slate-900">{speedMultiplier}x</span>
+                <span>{speedMultiplier}x</span>
                 <button 
                   onClick={() => setSpeedMultiplier(speedMultiplier === 60 ? 120 : 60)}
-                  className="text-emerald-600 hover:underline font-semibold ml-1 cursor-pointer"
+                  className="text-emerald-600 hover:underline font-semibold cursor-pointer ml-1"
                 >
                   {t.toggle}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            {/* Desktop Lang Switcher */}
+            <div className="hidden md:flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
               <button 
                 onClick={() => setLang("lv")}
                 className={`text-xs font-bold px-3 py-1 rounded-lg transition cursor-pointer ${lang === "lv" ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
@@ -278,82 +294,31 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Mobile Menu Toggle & Lang Switcher */}
-          <div className="flex items-center space-x-2 lg:hidden">
-            <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
-              <button 
-                onClick={() => setLang("lv")}
-                className={`text-[11px] font-bold px-2 py-0.5 rounded transition ${lang === "lv" ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'}`}
-              >
-                LV
-              </button>
-              <button 
-                onClick={() => setLang("en")}
-                className={`text-[11px] font-bold px-2 py-0.5 rounded transition ${lang === "en" ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'}`}
-              >
-                EN
-              </button>
-            </div>
-            <button 
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-          </div>
         </div>
-
-        {/* Mobile Dropdown Panel */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-slate-200 px-4 py-4 space-y-3 shadow-lg">
-            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <span className="text-xs font-medium text-slate-700">{simulationActive ? t.simActive : t.simPaused}</span>
-              <button 
-                onClick={() => setSimulationActive(!simulationActive)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold ${simulationActive ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}
-              >
-                {simulationActive ? t.simActive : t.simPaused}
-              </button>
-            </div>
-            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700">
-              <span className="font-medium">{t.speed}</span>
-              <button 
-                onClick={() => setSpeedMultiplier(speedMultiplier === 60 ? 120 : 60)}
-                className="font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200"
-              >
-                {speedMultiplier}x ({t.toggle})
-              </button>
-            </div>
-            <div className="text-[10px] text-slate-400 text-center pt-1">
-              MQTT Broker: mosquitto:9001 (WebSocket)
-            </div>
-          </div>
-        )}
       </header>
 
       {/* Secondary Sub-nav Bar */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5">
-        <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex space-x-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+      <div className="bg-white border-b border-slate-200 px-4 py-2.5">
+        <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          <div className="grid grid-cols-2 sm:flex gap-1.5">
             <button 
               onClick={() => setActiveTab("Parks")}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${activeTab === "Parks" ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer text-center ${activeTab === "Parks" ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
             >
               {t.parks}
             </button>
             <button 
               onClick={() => setActiveTab("Detalizēta informācija")}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${activeTab === "Detalizēta informācija" ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer text-center ${activeTab === "Detalizēta informācija" ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
             >
               {t.details}
             </button>
           </div>
 
-          <div className="flex items-center justify-between sm:justify-end space-x-3 w-full sm:w-auto">
+          <div className="grid grid-cols-2 sm:flex gap-2">
             <button
               onClick={() => setActiveTab("Warnings")}
-              className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold transition border cursor-pointer ${activeTab === "Warnings" ? 'bg-rose-600 border-rose-600 text-white' : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'}`}
+              className={`flex items-center justify-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition border cursor-pointer ${activeTab === "Warnings" ? 'bg-rose-600 border-rose-600 text-white' : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'}`}
             >
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
               <span>{t.warnings}</span>
@@ -361,7 +326,7 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab("Load")}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition border cursor-pointer ${activeTab === "Load" ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'}`}
+              className={`flex items-center justify-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition border cursor-pointer ${activeTab === "Load" ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'}`}
             >
               <Activity className={`h-3.5 w-3.5 shrink-0 ${activeTab === "Load" ? 'text-white' : 'text-slate-500'}`} />
               <span>{t.load}</span>
@@ -372,27 +337,25 @@ export default function DashboardPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 p-4 sm:p-6 space-y-6 max-w-[1600px] w-full mx-auto">
-        {/* Filters and Search Bar Row (only for the container list views) */}
+        {/* Filters and Search Bar Row */}
         {(activeTab === "Parks" || activeTab === "Detalizēta informācija") && (
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3 w-full md:w-96">
-            <div className="relative w-full">
-              <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder={t.searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-50/75 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-              />
-            </div>
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder={t.searchPlaceholder}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50/75 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+            />
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <select 
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="bg-slate-50/75 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="bg-slate-50/75 border border-slate-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="All Container Types">{t.allTypes}</option>
               <option value="KC-8U">KC-8U</option>
@@ -421,8 +384,8 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            {/* Map Container View */}
-            <div className="h-[400px] sm:h-[520px] w-full relative z-0">
+            {/* Adjusted responsive map height */}
+            <div className="h-[350px] sm:h-[480px] w-full relative z-0">
               <FleetMap
                 containers={filteredContainers}
                 fillLabel={t.fillLevel}
@@ -524,7 +487,6 @@ export default function DashboardPage() {
               </table>
             </div>
 
-            {/* Footer Summary inside Table Card */}
             <div className="p-3 bg-slate-50/50 border-t border-slate-200 text-center text-[11px] sm:text-xs text-slate-500">
               {t.tableFooter}
             </div>
@@ -533,7 +495,7 @@ export default function DashboardPage() {
         </div>
         )}
 
-        {/* Details tab: per-container detailed overview */}
+        {/* Details tab */}
         {activeTab === "Detalizēta informācija" && (
           <div>
             <h2 className="text-xs font-bold text-slate-700 tracking-wider uppercase mb-4">{t.detailsTitle}</h2>
@@ -600,7 +562,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Load tab: recharts load graphs */}
+        {/* Load tab */}
         {activeTab === "Load" && (
           <div>
             <h2 className="text-xs font-bold text-slate-700 tracking-wider uppercase mb-4">{t.loadTitle}</h2>
@@ -619,7 +581,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Warnings tab: acknowledge active alerts */}
+        {/* Warnings tab */}
         {activeTab === "Warnings" && (
           <div>
             <div className="flex items-center justify-between mb-4">
